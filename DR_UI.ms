@@ -1,3 +1,8 @@
+/* 
+	Author: Mastaman
+	Version: 1.0.1
+	ViscoCG
+*/
 try(DestroyDialog _DR)catch()	
 
 rollout _DR "visCo | Distributed Rendering Settings" 
@@ -37,16 +42,24 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	(
 		label lblPriority "Priority:" align: #left offset: [-1, 3] across: 3
 		dropdownlist ddlPriority ""  width: 60 items: #("Low", "Medium", "High") align: #left offset: [-150, 0]	
-		edittext edtComment "Comment:" width: 250 align: #left offset: [-270, 3]	
+		edittext edtComment "Comment:" width: 250 align: #left offset: [-270, 4]	
 	)
 	
 	group "Distributed Rendering Settings:"
 	(
-		checkbox cbxSettingsTransferMissingAssets "Transfer missing assets"
+		checkbox cbxRestartServersOnRenderEnd "Restart servers on render end" across: 2
+		checkbox cbxTransferMissingAssets "Transfer missing assets"
+		checkbox cbxUseLocalHost "Use local host" across: 2 checked: true
+		checkbox cbxUseCachedAssets "Use cached assets" across: 2 enabled: false
+		dropdownlist ddlCacheLimitType "" width: 90 items: #("None", "Age (hours)", "Size (GB)") align: #right offset: [90,0] across: 2 enabled: false
+		label lblCacheLimitType  "Cache limit type" align: #right offset: [-140, 3] enabled: false
+		button btnResetToDefaults "Reset to defaults" across: 3 align: #left
+		spinner spnCacheLimitValue "" width: 60 range: [0.0, 1000000.0, 100] align: #right offset: [-45,0] enabled: false
+		label lblCacheLimitValue "Cache limit value" align: #right offset: [-136, 0] enabled: false
 	)
 	
 	button btnOk "Apply" width: 75 height: 23 align: #right offset: [240, 0] across: 2
-	button btnCancel "Cancel" width: 75 height: 23 align: #right offset: [10, 0]
+	button btnCancel "Close" width: 75 height: 23 align: #right offset: [10, 0]
 	
 	timer tmrUpdate "" active: false interval: 400
 	timer trmAsyncUpdate "" active: true interval: 100
@@ -160,7 +173,12 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	fn setComment =
 	(
 		u = getUser()
-		setINISetting drINI "COMMENT" u (edtComment.text)
+		s = filterString edtComment.text "\n"
+		
+		c = ""
+		for i in s do c += i + " "
+		
+		setINISetting drINI "COMMENT" u c
 	)
 	
 	fn setUsedDR =
@@ -174,24 +192,70 @@ rollout _DR "visCo | Distributed Rendering Settings"
 		if(z != "" and bExitState == #apply) do setINISetting drINI "USED" u z
 	)
 	
+	fn getBool b = if(b == "true") then return true else return false
+	fn getInt i = if(i != undefined and i != "0" and i != "") then return i as integer else return 0
+	fn getFloat  f = if(f != undefined  and f != "") then return f as float else return 100.0
+	fn boolToString b = if(b) then return "1" else return "0"
 	
-	fn settingTransferMissingAssets t:#get =
+	fn drSettings t:#get =
 	(
 		u = getUser()
 		
-		tma = cbxSettingsTransferMissingAssets.checked as string
+		TransferMissingAssets = cbxTransferMissingAssets.checked as string
+		UseCachedAssets = cbxUseCachedAssets.checked as string
+		CacheLimitType = (ddlCacheLimitType.selection - 1) as string
+		CacheLimitValue = spnCacheLimitValue.value as string
+		
+		RestartServersOnRenderEnd = cbxRestartServersOnRenderEnd.checked as string
+		UseLocalHost = cbxUseLocalHost.checked as string
 		
 		case t of
 		(
 			#get:
 			(
-				tma = getINISetting drINI "MISSING_ASSET" u
-				if(tma == "true") do return true
-				return false
+				l = getINISetting drINI "USE_LOCALHOST" u
+				UseLocalHost = if(l == undefined or l == "") then true else getBool l
+				cbxUseLocalHost.checked  = UseLocalHost
+				
+				RestartServersOnRenderEnd = getBool (getINISetting drINI "RESTART_SERVERS" u)
+				cbxRestartServersOnRenderEnd.checked = RestartServersOnRenderEnd
+				
+				/* ASSETS */
+				
+				TransferMissingAssets = getBool (getINISetting drINI "MISSING_ASSET" u)
+				cbxTransferMissingAssets.checked = TransferMissingAssets
+				
+				cbxUseCachedAssets.enabled = TransferMissingAssets
+				
+				UseCachedAssets = getBool (getINISetting drINI "CACHED_ASSET" u)
+				cbxUseCachedAssets.checked  = UseCachedAssets
+				
+				ddlCacheLimitType.enabled = UseCachedAssets and TransferMissingAssets
+				lblCacheLimitType.enabled = UseCachedAssets and TransferMissingAssets
+				
+				CacheLimitType = getInt (getINISetting drINI "CACHED_LIMIT_TYPE" u)  + 1				
+				ddlCacheLimitType.selection = CacheLimitType
+				
+				spnCacheLimitValue.enabled = CacheLimitType > 1 and TransferMissingAssets and UseCachedAssets
+				lblCacheLimitValue.enabled = CacheLimitType > 1 and TransferMissingAssets and UseCachedAssets
+				
+				CacheLimitValue = getFloat (getINISetting drINI "CACHED_LIMIT_VALUE" u) 
+				spnCacheLimitValue.value = CacheLimitValue
 			)
-			default: setINISetting drINI "MISSING_ASSET" u tma
+			default: 
+			(
+				setINISetting drINI "MISSING_ASSET" u TransferMissingAssets
+				setINISetting drINI "CACHED_ASSET" u UseCachedAssets
+				setINISetting drINI "CACHED_LIMIT_TYPE" u CacheLimitType				
+				setINISetting drINI "CACHED_LIMIT_VALUE" u CacheLimitValue
+								
+				setINISetting drINI "USE_LOCALHOST" u UseLocalHost
+				setINISetting drINI "RESTART_SERVERS" u RestartServersOnRenderEnd								
+			)
 		)	 
 	)
+	
+	
 	
 	fn addNodes =
 	(
@@ -237,16 +301,21 @@ rollout _DR "visCo | Distributed Rendering Settings"
 			format (i + " 1 20204\n") to:f
 		)
 		
-		tma = if(cbxSettingsTransferMissingAssets.checked == true) then "1" else "0"
+		RestartServersOnRenderEnd = boolToString (cbxRestartServersOnRenderEnd.checked) 
+		UseLocalHost = boolToString (cbxUseLocalHost.checked) 		
+		TransferMissingAssets = boolToString (cbxTransferMissingAssets.checked) 
+		UseCachedAssets = boolToString (cbxUseCachedAssets.checked) 
+		CacheLimitType = (ddlCacheLimitType.selection - 1) as string
+		CacheLimitValue = spnCacheLimitValue.value as string
 		
-		format("restart_slaves 0\n")  to:f
+		format("restart_slaves " + RestartServersOnRenderEnd + "\n")  to:f
 		format("list_in_scene 0\n")  to:f
 		format("max_servers 0\n")  to:f
-		format("use_local_machine 1\n")  to:f
-		format("transfer_missing_assets " + tma + "\n")  to:f
-		format("use_cached_assets 1\n")  to:f
-		format("cache_limit_type 2\n")  to:f
-		format("cache_limit 100,000000\n")  to:f
+		format("use_local_machine " + UseLocalHost + "\n")  to:f
+		format("transfer_missing_assets " + TransferMissingAssets + "\n")  to:f
+		format("use_cached_assets " + UseCachedAssets + "\n")  to:f
+		format("cache_limit_type " + CacheLimitType + "\n")  to:f
+		format("cache_limit " + CacheLimitValue + "\n")  to:f
 
 		flush f
 		close f
@@ -624,7 +693,7 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	)
 		
 	fn disableUI d =
-	(
+	(		
 		for i in _DR.controls do i.enabled = d
 		_DR.btnCancel.enabled = true
 		--_DR.lblStatus.enabled = true
@@ -633,6 +702,9 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	fn getOffLine = 
 	(
 		disableUI true
+		
+		drSettings t:#get
+		
 		enabled = getINISetting drINI "OFFLINE" "ENABLE"				
 		if(enabled == "false") do 
 		(
@@ -853,11 +925,9 @@ rollout _DR "visCo | Distributed Rendering Settings"
 		deleteFile asyncCpuINI[2]
 		deleteFile asyncCpuINI[3]
 		
-		updateLbxList()	
-
-		tma = settingTransferMissingAssets t:#get
+		drSettings t:#get	
 		
-		cbxSettingsTransferMissingAssets.checked = tma
+		updateLbxList()				
 	)
 	
 	on _DR close do
@@ -924,14 +994,65 @@ rollout _DR "visCo | Distributed Rendering Settings"
 		setPriorityStatus s
 		setComment()
 		
+		drSettings t:#set
+		
 		updateLbxList()	
 		
 		addNodes()
 		
-		settingTransferMissingAssets t:#set
-
 		bExitState = #apply		
+	)
+	
+	on cbxTransferMissingAssets changed x do
+	(
+		i = ddlCacheLimitType.selection
+		ii = cbxUseCachedAssets.checked
+		
+		cbxUseCachedAssets.enabled = x
+		
+		
+		ddlCacheLimitType.enabled = x and ii 
+		lblCacheLimitType.enabled = x and ii
+		spnCacheLimitValue.enabled = x and i != 1
+		lblCacheLimitValue.enabled = x and i != 1		
+	)
+	
+	on cbxUseCachedAssets changed x do
+	(
+		i = ddlCacheLimitType.selection
+		
+		ddlCacheLimitType.enabled = x
+		lblCacheLimitType.enabled = x
+		spnCacheLimitValue.enabled = x and i != 1
+		lblCacheLimitValue.enabled = x and i != 1
+	)
+	
+	on ddlCacheLimitType selected x do
+	(
+		i = ddlCacheLimitType.selection
+		
+		spnCacheLimitValue.enabled = (i != 1)
+		lblCacheLimitValue.enabled = (i != 1)
+	)
+	
+	on btnResetToDefaults pressed do
+	(
+		cbxRestartServersOnRenderEnd.checked = false
+		cbxUseLocalHost.checked = true
+		cbxTransferMissingAssets.checked = false
+		cbxUseCachedAssets.checked = false
+		ddlCacheLimitType.selection = 1
+		spnCacheLimitValue.value = 100.0
+		
+		cbxUseCachedAssets.enabled = false
+		ddlCacheLimitType.enabled = false
+		spnCacheLimitValue.enabled = false
+		lblCacheLimitType.enabled = false
+		lblCacheLimitValue.enabled = false
+		
+		drSettings t:#set
+		drSettings t:#get
 	)
 )
 
-createDialog _DR 650 780 modal: true
+createDialog _DR 650 853 modal: true
