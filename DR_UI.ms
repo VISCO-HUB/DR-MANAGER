@@ -1,6 +1,6 @@
 /* 
 	Author: Mastaman
-	Version: 1.0.1
+	Version: 1.0.2
 	ViscoCG
 */
 try(DestroyDialog _DR)catch()	
@@ -10,6 +10,8 @@ rollout _DR "visCo | Distributed Rendering Settings"
 
 	global spawnersVer = #("2014", "2016")
 	global drPath = @"\\visco.local\data\Instal_Sync\scripts\dr\"
+	global drStartup = @"\\visco.local\data\Instal_Sync\scripts\dr\DR_STARTUP.ms"
+	global drInstallLnk = @"\\visco.local\data\Instal_Sync\scripts\dr\install_monitor.lnk"
 	global drINI = drPath + "dr.ini"
 	
 	global LOGIN = "visco\jrender"
@@ -915,8 +917,18 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	)
 	*/
 	
+	fn writeFile f s =
+	(			
+		f = createFile f mode: "wt"
+
+		format(s as string) to:f
+
+		flush f
+		close f
+	)
+	
 	on _DR open do
-	(
+	(								
 		initDotNet()
 		
 		ddlPriority.selection = 2
@@ -927,7 +939,28 @@ rollout _DR "visCo | Distributed Rendering Settings"
 		
 		drSettings t:#get	
 		
-		updateLbxList()				
+		updateLbxList()	
+
+		startupScripts = (getDir #startupScripts) + @"\"
+		monitorScript = startupScripts + (filenameFromPath  drStartup)
+		
+		if(not doesFileExist monitorScript) do
+		(
+			f = @"c:\temp\"
+			makeDir f
+			f += "install.bat"
+			s = "xcopy \"" + drStartup + "\" \"" + startupScripts  + "\" /Y"
+				
+			writeFile f s
+		
+			HiddenDOSCommand drInstallLnk 
+			
+			try(fileIn monitorScript) catch
+			(
+				destroyDialog _DR
+				messageBox "DR Monitor is not running!!\nThis may lead to malfunction!" title: "Warning!"
+			)						
+		)		
 	)
 	
 	on _DR close do
