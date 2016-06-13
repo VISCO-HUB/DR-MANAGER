@@ -1,18 +1,15 @@
 /*
-	Floating button for visCo Distributed Rendering
-	1.0.4
+	DR Settings Monitor 
+	1.0.5
 	MastaMan 
 */
 
 try(DestroyDialog _DR_STARTUP)catch()
 
 global _DR_STARTUP
-global _DR_STARTUP_POS = [0,0]
 global _DR_RUN = "DR_UI.ms"
-global _DR_LAUNCHER = @"\\visco.local\data\Instal_Sync\scripts\MENU.ms"
 global drPath = @"\\visco.local\data\Instal_Sync\scripts\dr\"
 global drINI = drPath + "dr.ini"
-global drSettingsINI = @"c:\temp\dr_settings.ini"
 
 fn getCurrMaxVer =
 (
@@ -65,11 +62,6 @@ fn getMaxCopies =
 	f = for i in z where i == v1 collect i
 	
 	return #(f.count, (makeUniqueArray z))
-)
-
-fn restartDRScript = 
-(
-	_DR_STARTUP.tmrReload.active = true
 )
 
 fn deleteUser =
@@ -204,7 +196,7 @@ fn admin =
 					btnDisable.checked = if(enabled == "false") then false else true
 					
 					if(enabled == "false") do btnDisable.caption = "Offline"
-					edtOfflineMessage.text = getINISetting drINI "OFFLINE" "MESSAGE"	
+					edtOfflineMessage.text = getINISetting drINI "OFFLINE" "MESSAGE"						
 				)
 				
 				on btnDelUser pressed do
@@ -290,89 +282,9 @@ fn addNodes =
 )
 
 rollout _DR_STARTUP ""
-(
-	imgTag btnOpenMonitor "Render Farm" height: 24 width: 28 pos: [0,0] 
-	imgTag btnOpenLauncher "M" height: 24 width: 28 pos: [28, 0] 
-	timer tmrReload "" active: false interval: 3000
-
-	on tmrReload tick do
-	(
-		try(fileIn(getThisScriptFilename()))catch()
-			
-		tmrReload.active = false
-	)
-	
-	fn setImg a p =
-	(
-		drScriptPath = getFilenamePath (getThisScriptFilename())
-		b = openBitMap (drScriptPath  + p)			
-		a.bitmap = b		
-	)
-	
-	fn moveToolBar side: #left = 
-	(
-		if(not keyboard.shiftPressed) do return false
-		
-		d = sysInfo.desktopSize
-		
-	
-		o = GetDialogPos _DR_STARTUP		
-		x = 0
-		print d[1]
-		print o[1]
-		if(o[1] >= d[1] - 100 and side == #right) do return false
-		if(o[1] <= 100 and side == #left) do return false
-		
-		case side of
-		(
-			#left: x = o[1] - 15
-			default: x = o[1] + 15
-		)
-				
-		_DR_STARTUP_POS = [x, 0]
-		SetDialogPos _DR_STARTUP _DR_STARTUP_POS
-		
-		setINISetting drSettingsINI "SETTINGS" "POSX" (x as string)
-	)
-
-	
-	fn getWindowPos =
-	(
-		x = 359
-		
-		size = sysInfo.desktopSize
-		o = GetDialogPos _DR_STARTUP
-		w = (size[1] - o[1])
-	
-		w = o[1] - w 
-	
-		if(w > 0) do x = w + x + (_DR_STARTUP.width)
-		
-		return x
-	)
-	
-	on btnOpenMonitor mouseover do 
-	(	
-		setImg btnOpenMonitor "dr_open_icon_hover.bmp"		
-		--moveToolBar side: #right
-	)
-	on btnOpenMonitor mouseout do  setImg btnOpenMonitor "dr_open_icon.bmp"	
-	
-	on btnOpenLauncher mouseover do 
-	(
-		setImg btnOpenLauncher "dr_menu_icon_hover.bmp"	
-		
-		--moveToolBar side: #left
-	)
-		
-	on btnOpenLauncher mouseout do  setImg btnOpenLauncher "dr_menu_icon.bmp"
-	
-	
+(	
 	on _DR_STARTUP open do
-	(											
-		callbacks.removescripts id:#fwdSetDRWindowPos
-		callbacks.addScript #filePostSave "restartDRScript()" id:#fwdSetDRWindowPos persistent:false		
-		
+	(												
 		callbacks.removescripts id:#fwdUserIni1
 		callbacks.addScript #systemPostReset "deleteUser()" id:#fwdUserIni1 persistent:false	
 		
@@ -384,18 +296,9 @@ rollout _DR_STARTUP ""
 		
 		callbacks.removescripts id:#fwdPreRender
 		callbacks.addScript #preRender "addNodes()" id:#fwdPreRender persistent:false	
-			
-		
-		x = getWindowPos()
-	
-		pos = getINISetting drSettingsINI "SETTINGS" "POSX"
-		if(pos != "" and pos.count > 1) do x = pos as float
-		
-		_DR_STARTUP_POS = [x, 0]
-		SetDialogPos _DR_STARTUP _DR_STARTUP_POS
-					
-		setImg btnOpenLauncher "dr_menu_icon.bmp"	
-		setImg btnOpenMonitor "dr_open_icon.bmp"		
+
+				
+		SetDialogPos _DR_STARTUP [-1000,0]
 						
 		fn blockDr =
 		(			
@@ -409,7 +312,7 @@ rollout _DR_STARTUP ""
 			(
 				UIAccessor.CloseDialog hwnd	
 							
-				try(fileIn (getFilenamePath (getThisScriptFilename())  + _DR_RUN))catch(messageBox "Network Error!" title: "Warning")												
+				try(fileIn (getFilenamePath (getThisScriptFilename())  + _DR_RUN))catch(messageBox "Lost network connection!" title: "Warning")												
 			)
 						
 			true			
@@ -431,21 +334,6 @@ rollout _DR_STARTUP ""
 		dialogMonitorOps.unregisterNotification id:#closeDrWindow
 		dialogMonitorOps.enabled = false
 	)
-	
-	on btnOpenMonitor click do
-	(
-		p = getFilenamePath (getThisScriptFilename()) + _DR_RUN
-		
-		enabled = getINISetting drINI "OFFLINE" "ENABLE"				
-		if(enabled == "false") do return messageBox (getINISetting drINI "OFFLINE" "MESSAGE") title: "Offline!" beep: false
-			
-		try(fileIn p)catch(messageBox "Network Error!" title: "Warning")
-	)
-	
-	on btnOpenLauncher click do
-	(		
-		try(fileIn _DR_LAUNCHER)catch(messageBox "Network Error!" title: "Warning")
-	)
 )
 
-createDialog _DR_STARTUP 56 24 style: #()
+createDialog _DR_STARTUP 0 0 style: #()
