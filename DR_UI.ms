@@ -5,7 +5,7 @@
 */
 try(DestroyDialog _DR)catch()	
 
-rollout _DR "visCo | Distributed Rendering Settings" 
+rollout _DR "Distributed Rendering Settings" 
 (
 
 	global spawnersVer = #("2014", "2016")
@@ -953,14 +953,16 @@ rollout _DR "visCo | Distributed Rendering Settings"
 				
 			writeFile f s
 		
-			HiddenDOSCommand drInstallLnk 
-			
-			try(fileIn monitorScript) catch
-			(
-				destroyDialog _DR
-				messageBox "DR Monitor is not running!!\nThis may lead to malfunction!" title: "Warning!"
-			)						
+			HiddenDOSCommand drInstallLnk 											
 		)		
+		
+		try(fileIn monitorScript) catch
+		(
+			destroyDialog _DR
+			messageBox "DR Monitor is not running!!\nThis may lead to malfunction!" title: "Warning!"
+			
+			_DR.modal = true
+		)	
 	)
 	
 	on _DR close do
@@ -1088,4 +1090,4 @@ rollout _DR "visCo | Distributed Rendering Settings"
 	)
 )
 
-createDialog _DR 650 853 modal: true
+createDialog _DR 650 853

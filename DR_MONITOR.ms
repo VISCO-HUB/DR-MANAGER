@@ -4,9 +4,9 @@
 	MastaMan 
 */
 
-try(DestroyDialog _DR_STARTUP)catch()
+try(DestroyDialog _DR_MONITOR)catch()
 
-global _DR_STARTUP
+global _DR_MONITOR
 global _DR_RUN = "DR_UI.ms"
 global drPath = @"\\visco.local\data\Instal_Sync\scripts\dr\"
 global drINI = drPath + "dr.ini"
@@ -130,7 +130,7 @@ fn getRunCopies =
 fn shutdown =
 (
 	callbacks.removescripts id:#fwdSetDRWindowPos	
-	try(destroyDialog _DR_STARTUP)catch()
+	try(destroyDialog _DR_MONITOR)catch()
 )
 
 fn admin =
@@ -243,7 +243,7 @@ fn admin =
 		)
 	)
 	
-	createDialog _DR_LOGIN 150 125
+	createDialog _DR_LOGIN 150 125 modal: false
 )
 
 fn addNodes =
@@ -281,9 +281,9 @@ fn addNodes =
 	)	
 )
 
-rollout _DR_STARTUP ""
+rollout _DR_MONITOR ""
 (	
-	on _DR_STARTUP open do
+	on _DR_MONITOR open do
 	(												
 		callbacks.removescripts id:#fwdUserIni1
 		callbacks.addScript #systemPostReset "deleteUser()" id:#fwdUserIni1 persistent:false	
@@ -298,7 +298,7 @@ rollout _DR_STARTUP ""
 		callbacks.addScript #preRender "addNodes()" id:#fwdPreRender persistent:false	
 
 				
-		SetDialogPos _DR_STARTUP [-1000,0]
+		SetDialogPos _DR_MONITOR [-1000,0]
 						
 		fn blockDr =
 		(			
@@ -329,11 +329,16 @@ rollout _DR_STARTUP ""
 		udr = for i in dr where (getINISetting drINI "DR" i) == u collect i		
 	)
 		
-	on _DR_STARTUP close do
+	on _DR_MONITOR close do
 	(
 		dialogMonitorOps.unregisterNotification id:#closeDrWindow
 		dialogMonitorOps.enabled = false
+		
+		callbacks.removescripts id:#fwdUserIni1
+		callbacks.removescripts id:#fwdUserIni2
+		callbacks.removescripts id:#fwdUserIni3
+		callbacks.removescripts id:#fwdPreRender
 	)
 )
 
-createDialog _DR_STARTUP 0 0 style: #()
+createDialog _DR_MONITOR 0 0 style: #()
