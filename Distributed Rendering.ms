@@ -28,7 +28,7 @@ HELP =
 
 This script enhance standard V-Ray Distributed Rendering Settings.=
 You not longer to add render nodes manually, just check it in list.=
-@=
+_=
 Features:=
 - List of render nodes=
 - Colored rendering status=
