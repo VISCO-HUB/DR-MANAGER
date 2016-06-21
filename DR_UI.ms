@@ -1,6 +1,6 @@
 /* 
 	Author: Mastaman
-	Version: 1.0.2
+	Version: 1.0.3
 	ViscoCG
 */
 try(DestroyDialog _DR)catch()	
@@ -27,17 +27,20 @@ rollout _DR "Distributed Rendering Settings"
 	global Clr = dotNetClass "System.Drawing.Color"	
 	global BoldFont = dotNetObject "System.Drawing.Font" "Microsoft Sans Serif" 11 (dotNetClass "System.Drawing.FontStyle").Bold (dotNetClass "System.Drawing.GraphicsUnit").Pixel
 
-	checkbutton btnUpdate "Updating..." width: 87 height: 23 align: #left checked: true offset: [-11, 0] across: 6
-	button btnRefresh "Refresh" width: 87 height: 23 align: #left offset: [-25, 0]
-	button btnCheckAll "Check All" width: 87 height: 23 align: #right offset: [51, 0]
-	button btnCheckFree "Check Free" width: 87 height: 23 align: #right offset: [37, 0]
-	button btnLastUsed "Last Used" width: 87 height: 23 align: #right offset: [23, 0]
-	button btnUncheckAll "Uncheck All" width: 87 height: 23 align: #right offset: [9, 0]	
+	checkbutton btnUpdate "Updating..." width: 87 height: 23 align: #left checked: true offset: [0, 0] across: 4
+	button btnRefresh "Refresh" width: 87 height: 23 align: #left offset: [-61, 0]	
+	button btnAdmin "Admin Panel" width: 87 height: 23 align: #right offset: [61, 0]
+	button btnShutdown "Disable DR" width: 87 height: 23 align: #right  offset: [0, 0]
+	
 	dotNetControl lbxServerList "system.windows.forms.listView" height:589 width: 644 offset: [-10, 0]
 	
-	
-	button btnDropNodes "Drop Nodes" width: 87 height: 23 align: #left offset: [-11, 0] across: 2
-	button btnHighlight "Highlight Nodes" width: 87 height: 23 offset: [-233, 0] align: #left enabled: false
+	button btnCheckAll "Check All" width: 87 height: 23 align: #left offset: [0, 0] across: 6
+	button btnCheckFree "Check Free" width: 87 height: 23 align: #left offset: [-9, 0]
+	button btnLastUsed "Last Used" width: 87 height: 23 align: #left offset: [-18, 0] enabled: false
+	button btnHighlight "Highlight Nodes" width: 87 height: 23 align: #left offset: [-27, 0]	
+	 
+	button btnUncheckAll "Uncheck All" width: 87 height: 23 align: #right offset: [9, 0] across: 2	
+	button btnDropNodes "Drop Nodes" width: 87 height: 23 align: #right
 	--button btnStartSpawner "Start Spawners" width: 87 height: 23 offset: [-233, 0] align: #left enabled: false
 	
 	group "Used Nodes:"
@@ -1087,6 +1090,19 @@ rollout _DR "Distributed Rendering Settings"
 		
 		drSettings t:#set
 		drSettings t:#get
+	)
+	
+	on btnAdmin pressed do
+	(
+		try(admin()) catch(messageBox "DR Monitor not runned!" title: "Error!")
+	)
+	
+	on btnShutdown pressed do
+	(
+		q = queryBox "Do you really want to disable DR Manager?" title: "Confirm"
+		if(q == false) do return false
+				
+		try(shutdown()) catch(messageBox "DR Monitor not runned!" title: "Error!")					
 	)
 )
 

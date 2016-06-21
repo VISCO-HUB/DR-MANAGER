@@ -1,6 +1,6 @@
 /*
 	DR Settings Monitor 
-	1.0.5
+	1.0.6
 	MastaMan 
 */
 
@@ -127,19 +127,12 @@ fn getRunCopies =
 	return #(runCopy, c.count)
 )
 
-fn shutdown =
+fn signin =
 (
-	callbacks.removescripts id:#fwdSetDRWindowPos	
-	try(destroyDialog _DR_MONITOR)catch()
-)
-
-fn admin =
-(
-	try(destroyDialog _DR_ADMIN)catch()
-
-	global admin_signin_l = ""
-	global admin_signin_p = ""
-	
+	global signin_l = ""
+	global signin_p = ""
+	global _DR_USER_SIGNED = false
+		
 	rollout _DR_LOGIN "Login"
 	(
 		label lblLogin "Login:" align: #left
@@ -148,102 +141,129 @@ fn admin =
 		edittext edtPassword ""
 		button btnSign "Sign In"
 		
-		on edtPassword changed x do
+		fn clearLogin = 
 		(
-			admin_signin_p += trimLeft x "*"
-			
-			z = ""		
-			for i in 1 to admin_signin_p.count do z += "*"
-			edtPassword.text = z
-		)
-		
-		on edtLogin changed x do admin_signin_l = edtLogin.text
-	
-		on btnSign pressed do
-		(								
-			try(destroyDialog _DR_ADMIN)catch()
-			
-			rollout _DR_ADMIN "Admin Panel"
-			(	
-				listbox lbxUsers "Users:" height: 22
-				button btnDelUser "Remove" across: 2
-				button btnUpdateUser "Update"
-				group "Offline Service"
-				(
-					edittext edtOfflineMessage "" text:"Service under maintance!"
-					checkbutton btnDisable "Online"
-				)
-				
-				fn updateAdmin =
-				(					
-					u = sysInfo.username	
-										
-					dr = getINISetting drINI "DR"
-					udr = for i in dr collect getINISetting drINI "DR" i
-					udr = makeUniqueArray udr
-					
-					lbxUsers.items = udr
-				)
-				
-				on _DR_ADMIN open do
-				(
-					if(admin_signin_l != "admin" or admin_signin_p != "renderfarm") do try(destroyDialog _DR_ADMIN)catch()
-					try(destroyDialog _DR_LOGIN)catch()
-					
-					updateAdmin()
-					
-					enabled = getINISetting drINI "OFFLINE" "ENABLE"	
-					btnDisable.checked = if(enabled == "false") then false else true
-					
-					if(enabled == "false") do btnDisable.caption = "Offline"
-					edtOfflineMessage.text = getINISetting drINI "OFFLINE" "MESSAGE"						
-				)
-				
-				on btnDelUser pressed do
-				(
-					l = lbxUsers.selected 
-					if(l == undefined) do return false
-					
-					u = sysInfo.username	
-										
-					dr = getINISetting drINI "DR"
-					
-					for i in dr where (getINISetting drINI "DR" i) == l do setINISetting drINI "DR" i ""
-					
-					updateAdmin()
-				)
-				
-				on btnUpdateUser pressed do
-				(
-					updateAdmin()
-				)
-				
-				on btnDisable changed x do
-				(
-					btnDisable.caption = "Offline"
-					if(x) do btnDisable.caption = "Online"
-					setINISetting drINI "OFFLINE" "ENABLE" (x as string)
-					setINISetting drINI "OFFLINE" "MESSAGE" (edtOfflineMessage.text)
-				)
-			)
-			
-			createDialog _DR_ADMIN 220 450
-			
-			admin_signin_l = ""
-			admin_signin_p = ""
+			signin_l = ""
+			signin_p = ""
 			edtLogin.text = ""
 			edtPassword.text = ""
 		)
 		
+		on edtPassword changed x do
+		(
+			signin_p += trimLeft x "*"
+			
+			z = ""		
+			for i in 1 to signin_p.count do z += "*"
+			edtPassword.text = z
+		)
+		
+		on edtLogin changed x do signin_l = edtLogin.text
+		
+		on btnSign pressed do
+		(							
+			if(signin_l != "admin" or signin_p != "renderfarm") do 
+			(				
+				messageBox "Wrong login or password!" title: "Error!"				
+				return false
+			)
+			
+			_DR_USER_SIGNED = true
+			clearLogin()
+			try(destroyDialog _DR_LOGIN)catch()	
+		)
+	
 		on _DR_LOGIN close do
 		(
-			admin_signin_p = ""
+			signin_p = ""
 			edtLogin.text = ""
 			edtPassword.text = ""
 		)
 	)
+
+	createDialog _DR_LOGIN 150 125 modal: true
 	
-	createDialog _DR_LOGIN 150 125 modal: false
+	return _DR_USER_SIGNED
+)
+
+fn shutdown =
+(	
+	if(signin() == false) do return false
+	
+	callbacks.removescripts id:#fwdSetDRWindowPos	
+	try(destroyDialog _DR_MONITOR)catch()
+	try(destroyDialog _DR) catch()				
+)
+
+fn admin =
+(			
+	if(signin() == false) do return false
+
+	try(destroyDialog _DR_ADMIN)catch()
+	try(destroyDialog _DR) catch()		
+	
+	rollout _DR_ADMIN "Admin Panel"
+	(	
+		listbox lbxUsers "Users:" height: 22
+		button btnDelUser "Remove" across: 2
+		button btnUpdateUser "Update"
+		group "Offline Service"
+		(
+			edittext edtOfflineMessage "" text: "Service under maintenance!"
+			checkbutton btnDisable "Online"
+		)
+		
+		fn updateAdmin =
+		(					
+			u = sysInfo.username	
+								
+			dr = getINISetting drINI "DR"
+			udr = for i in dr collect getINISetting drINI "DR" i
+			udr = makeUniqueArray udr
+			
+			lbxUsers.items = udr
+		)
+		
+		on _DR_ADMIN open do
+		(					
+			updateAdmin()
+			
+			enabled = getINISetting drINI "OFFLINE" "ENABLE"	
+			btnDisable.checked = if(enabled == "false") then false else true
+			
+			if(enabled == "false") do btnDisable.caption = "Offline"
+			edtOfflineMessage.text = getINISetting drINI "OFFLINE" "MESSAGE"						
+		)
+		
+		on btnDelUser pressed do
+		(
+			l = lbxUsers.selected 
+			if(l == undefined) do return false
+			
+			u = sysInfo.username	
+								
+			dr = getINISetting drINI "DR"
+			
+			for i in dr where (getINISetting drINI "DR" i) == l do setINISetting drINI "DR" i ""
+			
+			updateAdmin()
+		)
+		
+		on btnUpdateUser pressed do
+		(
+			updateAdmin()
+		)
+		
+		on btnDisable changed x do
+		(
+			btnDisable.caption = "Offline"
+			if(x) do btnDisable.caption = "Online"
+			setINISetting drINI "OFFLINE" "ENABLE" (x as string)
+			setINISetting drINI "OFFLINE" "MESSAGE" (edtOfflineMessage.text)
+		)
+	)
+	
+	createDialog _DR_ADMIN 220 450
 )
 
 fn addNodes =

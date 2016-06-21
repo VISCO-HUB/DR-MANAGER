@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Distributed Rendering
-VERSION = 1.0.2
+VERSION = 1.0.3
 AUTHOR = MastaMan
 DEV = Visco CG
 HELP = 
@@ -23,6 +23,10 @@ HELP =
 + Added: Copy DR Monitor to startup folder=
 - BugFix: modal window hinge=
 
+[1.0.3]
+
+* Changed: Moved manipulation buttons under list=
++ Added: Buttons Admin Panel and Disable DR=
 
 [ABOUT]
 
@@ -37,6 +41,13 @@ Features:=
 - Comments and priorities=
 - Standard V-Ray settings=
 - Usability=
+
+_=
+
+For sign in to Admin Panel:=
+@=
+Login: admin=
+Password: renderfarm=
 
 [TEST]
 
