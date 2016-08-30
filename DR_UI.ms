@@ -1,6 +1,6 @@
 /* 
 	Author: Mastaman
-	Version: 1.0.3
+	Version: 1.0.4
 	ViscoCG
 */
 try(DestroyDialog _DR)catch()	
@@ -47,7 +47,10 @@ rollout _DR "Distributed Rendering Settings"
 	(
 		label lblPriority "Priority:" align: #left offset: [-1, 3] across: 3
 		dropdownlist ddlPriority ""  width: 60 items: #("Low", "Medium", "High") align: #left offset: [-150, 0]	
-		edittext edtComment "Comment:" width: 250 align: #left offset: [-270, 4]	
+		edittext edtComment "Comment:" width: 250 align: #left offset: [-270, 4]
+		label lblService "Start Service:" align: #left offset: [-1, 3] across: 3
+		dropdownlist dllService "" align: #left width: 120 items: #("VRaySpawner 2016", "VRaySpawner 2014")  offset: [-125, 0]		
+		button btnServiceAction "OK" offset: [-290, 0]
 	)
 	
 	group "Distributed Rendering Settings:"
@@ -781,6 +784,48 @@ rollout _DR "Distributed Rendering Settings"
 				
 		for i in foundUser[1] do setDrUser i del:true
 	)
+	
+	fn serviceManager =
+	(
+		s = dllService.selected 
+					
+		z = getCheckedLbxList()
+		
+		u = getUser()
+		
+		bError = false
+		
+		fn Service geteway: "" srv: "" query: "" = return "WMIC /NODE: \"" + geteway + "\" /USER: \"" + LOGIN + "\" /PASSWORD: \"" + PWD + "\" SERVICE WHERE \"Name='" + srv + "'\" CALL " + query
+		
+		for i in z do
+		(
+			n = getDrUser i
+			if(n[1] == u) do
+			(												
+				q = case a of
+				(
+					"START":  "STARTSERVICE"
+					default: "STOPSERVICE"
+				)
+				
+				tmp = "WMIC /NODE: \"" + i + "\" /USER: \"" + LOGIN + "\" /PASSWORD: \"" + PWD + "\" SERVICE WHERE \"Name='" + s + "'\" CALL "
+				
+				cmd = ""
+				
+				for ii in dllService.items do 
+				(				
+					cmd += Service geteway: i srv: ii query: "STOPSERVICE" 
+					cmd += " && "
+				)
+				
+				cmd +=  Service geteway: i srv: s query: "STARTSERVICE" 
+				
+				HiddenDOSCommand cmd donotwait: true prompt: ""
+			)
+		)
+		
+	)
+	
 	/*
 	fn stopSpawners s =
 	(
@@ -817,6 +862,7 @@ rollout _DR "Distributed Rendering Settings"
 	
 	/* MAIN UPDATE FUNCTION */
 	global asyncCpu = 1
+	
 	
 	on trmAsyncUpdate tick do
 	(
@@ -1104,6 +1150,11 @@ rollout _DR "Distributed Rendering Settings"
 				
 		try(shutdown()) catch(messageBox "DR Monitor not runned!" title: "Error!")					
 	)
+	
+	on btnServiceAction pressed do
+	(
+		serviceManager()
+	)
 )
 
-createDialog _DR 650 853
+createDialog _DR 650 880
