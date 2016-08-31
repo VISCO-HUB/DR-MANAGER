@@ -797,6 +797,8 @@ rollout _DR "Distributed Rendering Settings"
 		
 		fn Service geteway: "" srv: "" query: "" = return "WMIC /NODE: \"" + geteway + "\" /USER: \"" + LOGIN + "\" /PASSWORD: \"" + PWD + "\" SERVICE WHERE \"Name='" + srv + "'\" CALL " + query
 		
+		iService = 0
+		
 		for i in z do
 		(
 			n = getDrUser i
@@ -807,9 +809,7 @@ rollout _DR "Distributed Rendering Settings"
 					"START":  "STARTSERVICE"
 					default: "STOPSERVICE"
 				)
-				
-				tmp = "WMIC /NODE: \"" + i + "\" /USER: \"" + LOGIN + "\" /PASSWORD: \"" + PWD + "\" SERVICE WHERE \"Name='" + s + "'\" CALL "
-				
+								
 				cmd = ""
 				
 				for ii in dllService.items do 
@@ -819,11 +819,16 @@ rollout _DR "Distributed Rendering Settings"
 				)
 				
 				cmd +=  Service geteway: i srv: s query: "STARTSERVICE" 
-				
+								
 				HiddenDOSCommand cmd donotwait: true prompt: ""
+				
+				iService += 1
 			)
 		)
 		
+		
+		if(iService == 0) do return messageBox "Please reserve nodes first!" title: "Warning!"
+		return messageBox ("Started \"" + s + "\" on " + iService as string + " nodes.") title: "Success!"
 	)
 	
 	/*
@@ -1153,6 +1158,10 @@ rollout _DR "Distributed Rendering Settings"
 	
 	on btnServiceAction pressed do
 	(
+		q = queryBox ("Do you really want to start \"" + dllService.selected + "\" service?") title: "Confirm"
+		
+		if(not q) do return false
+		
 		serviceManager()
 	)
 )
